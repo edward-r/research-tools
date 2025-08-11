@@ -191,3 +191,14 @@ make log:tail
   save files locally or re-run the watcher from a local path.
 - **Noisy logs**: pipe your script output through a formatter,
   or adjust the appender to summarize differently.
+
+## How to “make it your own”
+
+- **Rename Evidence Logs**: in your kit, change `notes/PROJECT_NAME_EvidenceLog.md` to
+  match your real project tag; update npm scripts accordingly.
+- **Point at your own script**: set `JS_FILE` (or update the inline command) to your
+  primary script path in `assets/code/`.
+- **Customize the Dashboard & Smart Searches**: open `notes/Project_Dashboard.md` and
+  `notes/SmartSearch_Index.md` and replace `PROJECT_NAME` with your tag used in
+  Bear (e.g., `#DataPipeline2025`).
+- **Expand tests**: add more files under `tests/` and call them from `tests/run_tests.mjs`.
