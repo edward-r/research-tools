@@ -15,9 +15,14 @@ make log:tail
 
 ```
 
-End-to-end guide for using the **Node-only** kits you can generate with the script I shared (`setup_research_kits_node_only_plus.mjs`). These kits work the same way for **research**, **learning**, and **development** projects — the only difference is what you put into them.
+End-to-end guide for using the **Node-only** kits you can generate with the script I
+shared (`setup_research_kits_node_only_plus.mjs`). These kits work the same way for
+**research**, **learning**, and **development** projects — the only difference is what
+you put into them.
 
-`setup_research_kits_node_only_plus.mjs` sets up the project, including a directory structure, a package.json, and a .gitignore file. It also installs and configures Node.js, NPM, and Yarn.
+`setup_research_kits_node_only_plus.mjs` sets up the project, including a directory
+structure, a package.json, and a .gitignore file. It also installs and configures Node.
+js, NPM, and Yarn.
 
 ## What the script creates
 
