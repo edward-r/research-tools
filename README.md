@@ -15,14 +15,14 @@ make log:tail
 
 ```
 
-End-to-end guide for using the **Node-only** kits you can generate with the script I
-shared (`setup_research_kits_node_only_plus.mjs`). These kits work the same way for
-**research**, **learning**, and **development** projects — the only difference is what
-you put into them.
+End-to-end guide for using the **Node-only** kits you can generate with
+the script I shared (`setup_research_kits_node_only_plus.mjs`).
+These kits work the same way for **research**, **learning**,
+and **development** projects — the only difference is what you put into them.
 
 `setup_research_kits_node_only_plus.mjs` sets up the project, including a directory
-structure, a package.json, and a .gitignore file. It also installs and configures Node.
-js, NPM, and Yarn.
+structure, a package.json, and a .gitignore file.
+It also installs and configures Node. js, NPM, and Yarn.
 
 ## What the script creates
 
@@ -53,11 +53,11 @@ logs/                          # created on first run
 
 **Concepts baked-in:**
 
-- **Evidence Log**: a running Markdown table that records what you ran, when, and the
-  output summary.
-- **Run → Log → Append loop**: every time you run your code, the output is saved to
-  `logs/…` and a new row is appended to the Evidence Log (tagged `#Confirmed` or
-  `#Bug`).
+- **Evidence Log**: a running Markdown table that records what you ran, when,
+  and the output summary.
+- **Run → Log → Append loop**: every time you run your code,
+  the output is saved to `logs/…` and a new row is appended to
+  the Evidence Log (tagged `#Confirmed` or `#Bug`).
 - **Smart Searches** (optional, for Bear): prebuilt “one-click” search links to filter
   notes by tags.
 
@@ -90,8 +90,8 @@ make log:tail
   - Open `notes/SmartSearch_Index.md` in **Bear** if you use it; those links help
     filter notes by tags like `#Confirmed`, `#Bug`, `#Dataset`, `#Code`, etc.
 
-**Example**: Swap `sample_csv_stats.mjs` for `my_archive_scan.mjs` that parses PDFs or
-CSVs, and your Evidence Log becomes a defensible research audit trail.
+**Example**: Swap `sample_csv_stats.mjs` for `my_archive_scan.mjs` that parses
+PDFs or CSVs, and your Evidence Log becomes a defensible research audit trail.
 
 ## Learning projects (new tech / frameworks)
 
@@ -112,8 +112,8 @@ CSVs, and your Evidence Log becomes a defensible research audit trail.
     make watch:js
     ```
 
-  - When something breaks (non-zero exit), the Evidence Log row is tagged `#Bug`. Fix
-    it; the next run flips back to `#Confirmed`.
+  - When something breaks (non-zero exit), the Evidence Log row is tagged `#Bug`.
+    Fix it; the next run flips back to `#Confirmed`.
 
 **Tip**: Store “known good” snippets in a separate note in Bear
 (e.g., `CodeSnippets.md`) and tag with `#Snippet #Confirmed`.
@@ -137,8 +137,8 @@ CSVs, and your Evidence Log becomes a defensible research audit trail.
 
   - Every save → run → log → append.
 
-**Result**: You get a searchable changelog of runs with timestamps and outcomes — handy
-for debugging, demos, and documentation.
+**Result**: You get a searchable changelog of runs with
+timestamps and outcomes — handy for debugging, demos, and documentation.
 
 ## Customizing for your real project
 
@@ -218,13 +218,14 @@ for debugging, demos, and documentation.
 
 ## How to “make it your own”
 
-- **Rename Evidence Logs**: in your kit, change `notes/PROJECT_NAME_EvidenceLog.md` to
-  match your real project tag; update npm scripts accordingly.
+- **Rename Evidence Logs**: in your kit, change
+  `notes/PROJECT_NAME_EvidenceLog.md` to match your real project tag;
+  update npm scripts accordingly.
 - **Point at your own script**: set `JS_FILE` (or update the inline command) to your
   primary script path in `assets/code/`.
-- **Customize the Dashboard & Smart Searches**: open `notes/Project_Dashboard.md` and
-  `notes/SmartSearch_Index.md` and replace `PROJECT_NAME` with your tag used in
-  Bear (e.g., `#DataPipeline2025`).
+- **Customize the Dashboard & Smart Searches**: open
+  `notes/Project_Dashboard.md` and `notes/SmartSearch_Index.md`
+  and replace `PROJECT_NAME` with your tag used in Bear (e.g., `#DataPipeline2025`).
 - **Expand tests**: add more files under `tests/` and call them from `tests/run_tests.mjs`.
 
 ---
@@ -326,7 +327,8 @@ Quickfix basics:
 - `:colder` / `:cnewer` — navigate quickfix lists
 - `:make! run:tests` — run without jumping to the first error
 
-Tip: set NeoVim to **auto-save** before build so `:make` always uses your latest edits:
+Tip: set NeoVim to **auto-save** before build so `:make`
+always uses your latest edits:
 
 ```
 :set autowrite
@@ -373,11 +375,11 @@ This keeps everything JavaScript-centric while still leveraging your Makefile.
   Evidence event in `notes/..._EvidenceLog.md`, with a pointer to the output in `logs/…`.
 - **Learning**: the watcher gives you “tight feedback loops.” Save, re-run, and capture
   results automatically — successes are tagged `#Confirmed`, failures `#Bug`.
-- **Development**: `run:tests` makes the Evidence Log a lightweight CI trail you can
-  grep/browse later (and it works fine inside NeoVim via `:make run:tests`).
+- **Development**: `run:tests` makes the Evidence Log a lightweight CI trail
+  you can grep/browse later (and it works fine inside NeoVim via `:make run:tests`).
 
-If you want, I can **pre-set `JS_FILE` and `KIT_NAME`** to your real main script and
-project tag so you never have to override them on the command line.
+If you want, I can **pre-set `JS_FILE` and `KIT_NAME`** to your real main
+script and project tag so you never have to override them on the command line.
 
 ## How this behaves now
 
@@ -420,3 +422,82 @@ npm run kits:build
   overrides.
 - **npm scripts** let you run the same tasks on systems without `make` installed
   (or in GitHub Actions without adding a Make install step).
+
+---
+
+## Summary
+
+This project is a **Node.js research toolkit generator** that creates structured
+environments for research, learning,
+and development projects with built-in evidence logging.
+
+## What it does
+
+**Creates research kits** - The main script `setup_research_kits_node_only_plus.mjs`
+generates two ready-to-use Node.js project folders with a complete workflow for
+tracking experimental runs and outcomes.
+
+**Evidence logging system** - Every time you run code, it automatically:
+
+- Saves console output to timestamped log files
+- Appends a row to a Markdown "Evidence Log" with date,
+  status (#Confirmed or #Bug), and output summary
+- Creates an audit trail of all your experiments and results
+
+**File watching and auto-logging** - The watcher tool reruns your code on every
+file save and logs the results, enabling tight feedback loops during development.
+
+## Key components
+
+- **Project generator** (`setup_research_kits_node_only_plus.mjs`) - Creates
+  structured folders with assets, tools, notes, and Makefiles
+- **Evidence logger** (`tools/append_evidence_row.mjs`) - Appends structured
+  rows to Markdown logs
+- **File watcher** (`tools/watch_and_log_node.mjs`) - Monitors files
+  and auto-runs code on changes
+- **Make targets** - Shortcuts for common tasks like `make run:js`,
+  `make watch:js`, `make run:tests`
+
+## Use cases
+
+- **Research projects** - Track data analysis runs, maintain defensible audit trails
+- **Learning new tech** - Experiment with small code snippets and save results automatically
+- **Development** - Treat every run like a mini-CI step with logged outcomes
+
+The core philosophy is "run → log → append" - every execution becomes
+a documented evidence point you can search and reference later.
+
+The project has Bear note integration built in. From the README,
+several Bear-specific features:
+
+## Bear note tags mentioned
+
+**Evidence Log tags** - The system automatically tags entries with:
+
+- `#Code #Experiment`
+- `#Confirmed` (when code runs successfully, exit code 0)
+- `#Bug` (when code fails, non-zero exit code)
+
+**Smart Search system** - Creates `notes/SmartSearch_Index.md`
+with pre-built Bear search links (`bear://` URLs) to filter notes by tags like:
+
+- `#Confirmed`
+- `#Bug`
+- `#Dataset`
+- `#Code`
+- Active tasks
+
+**Project-specific tags** - The README mentions tagging notes with your project
+tag (e.g., `#YourProject`, `#DataPipeline2025`) so the Smart Searches filter correctly.
+
+**Additional suggested tags**:
+
+- `#Snippet #Confirmed` for storing "known good" code snippets
+- Custom project tags that get integrated into the Bear search links
+
+The Bear integration is optional but designed to turn your Evidence Log into a
+searchable knowledge base where you can quickly filter by outcome type, project,
+or content category using Bear's tag-based search system.
+
+The `SmartSearch_Index.md` file appears to be a dashboard of
+one-click Bear search links that help you navigate your research findings efficiently.
