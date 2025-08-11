@@ -1,8 +1,10 @@
 {
   "name": "research-tools",
-  "version": "1.0.0",
-  "type": "module",
   "description": "Research Tools",
+  "type": "module",
+  "author": "e.a.roberts",
+  "license": "ISC",
+  "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "kits:build": "make kits:build",
@@ -10,7 +12,5 @@
     "watch:js": "make watch:js",
     "run:tests": "make run:tests",
     "log:tail": "make log:tail"
-  },
-  "author": "e.a.roberts",
-  "license": "ISC"
+  }
 }
