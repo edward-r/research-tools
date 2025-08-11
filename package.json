@@ -1,11 +1,16 @@
 {
   "name": "research-tools",
   "version": "1.0.0",
+  "type": "module",
   "description": "Research Tools",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "kits:build": "make kits:build",
+    "run:js": "make run:js",
+    "watch:js": "make watch:js",
+    "run:tests": "make run:tests",
+    "log:tail": "make log:tail"
   },
-  "author": "",
+  "author": "e.a.roberts",
   "license": "ISC"
 }
