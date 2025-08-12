@@ -647,3 +647,25 @@ say the word — I can add a
 Node-only watcher target (`watch:tests`)
 that triggers `run:tests` whenever files under `assets/code/` or `tests/` change,
 and still logs/append results to the Evidence Log.
+
+## Informational Addendum
+
+The targets in the Makefile are defined on lines that start with
+a name followed by a colon. Here are all the targets:
+
+• help (line 14) - Shows available targets
+• kits:build (line 18) - Build/refresh both Node-only kits +
+augment
+• run:js (line 23) - Run JS demo, save logs, append Evidence Log
+• watch:js (line 34) - Watch JS file; on save: run → log → append
+• run:tests (line 38) - Run tests; log pass/fail; append Evidence
+Log
+• log:tail (line 49) - Show the newest run log
+• dev (line 52) - Open Evidence Log in NeoVim split + run watcher
+• dev3 (line 59) - NeoVim: Evidence Log (L), watcher (TR), newest
+log tail (BR)
+• dev:tests (line 67) - NeoVim: Evidence Log (L), run tests (TR),
+newest log tail (BR)
+
+The .PHONY declarations on lines 12, 58, and 66 list these
+targets as phony (not representing actual files).
