@@ -1,13 +1,161 @@
-name: node-ci
-on: [push, pull_request]
+name: "Node.js CI (Research Kits: PROJECT + DEMO + Watcher)"
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
 jobs:
-  test:
+  validate-kits:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20.x]
+        kit: [PROJECT_NAME_NODEONLY, DEMO_JS_AsyncPatterns_NODEONLY]
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: "20" }
-      - run: npm ci || npm install
-      - run: node bootstrap_all_kits.mjs
-      - run: node augment_nodeonly_kits.mjs
-      - run: node tests/run_tests.mjs
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies (if package.json exists)
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json at repo root — skipping install."
+          fi
+
+      - name: Ensure kits present (bootstrap if needed)
+        run: |
+          if [ ! -d "${{ matrix.kit }}" ]; then
+            if [ -f bootstrap_all_kits.mjs ]; then
+              echo "Kit ${{ matrix.kit }} not found. Bootstrapping all kits..."
+              node bootstrap_all_kits.mjs
+            else
+              echo "ERROR: ${{ matrix.kit }} not found and no bootstrap_all_kits.mjs present."
+              exit 1
+            fi
+          fi
+          ls -la "${{ matrix.kit }}"
+
+      - name: Run kit demo (make run-js)
+        run: make -C "${{ matrix.kit }}" run-js
+
+      - name: Run kit tests (make run-tests)
+        run: |
+          if grep -q '^run-tests:' "${{ matrix.kit }}/Makefile"; then
+            make -C "${{ matrix.kit }}" run-tests
+          else
+            echo "No run-tests target found in ${{ matrix.kit }}/Makefile — skipping."
+          fi
+
+      - name: Upload logs & Evidence Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.kit }}-artifacts
+          path: |
+            ${{ matrix.kit }}/logs/**/*.log
+            ${{ matrix.kit }}/logs/*.log
+            ${{ matrix.kit }}/notes/*EvidenceLog.md
+          if-no-files-found: warn
+
+  watcher-demo:
+    runs-on: ubuntu-latest
+    needs: validate-kits
+    env:
+      KIT: DEMO_JS_AsyncPatterns_NODEONLY
+      FILE: assets/code/sample_csv_stats.mjs
+      LOG: notes/DEMO_JS_AsyncPatterns_EvidenceLog.md
+      LABEL: sample_csv_stats.mjs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies (if package.json exists)
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json at repo root — skipping install."
+          fi
+
+      - name: Ensure demo kit present (bootstrap if needed)
+        run: |
+          if [ ! -d "${KIT}" ]; then
+            if [ -f bootstrap_all_kits.mjs ]; then
+              echo "Demo kit missing — bootstrapping…"
+              node bootstrap_all_kits.mjs
+            else
+              echo "ERROR: ${KIT} not found and no bootstrap_all_kits.mjs present."
+              exit 1
+            fi
+          fi
+          ls -la "${KIT}"
+
+      - name: Start watcher (background) and trigger a change
+        working-directory: ${{ env.KIT }}
+        shell: bash
+        run: |
+          # Start watcher in background; it runs once immediately, then on changes.
+          node tools/watch_and_log_node.mjs \
+            --file "${FILE}" \
+            --run "node ${FILE}" \
+            --log "${LOG}" \
+            --label "${LABEL}" \
+            > watcher.out 2>&1 & echo $! > watcher.pid
+
+          # Give it time for the initial run and log write.
+          sleep 2
+
+          # Trigger a change (append whitespace) to cause a second run.
+          printf '\n' >> "${FILE}"
+
+          # Give it time to detect the change and write another log.
+          sleep 4
+
+          # Stop the watcher.
+          kill $(cat watcher.pid) || true
+          sleep 1
+
+          echo "---- watcher.out ----"
+          tail -n +1 watcher.out || true
+
+      - name: Verify logs exist (at least one run)
+        working-directory: ${{ env.KIT }}
+        run: |
+          count=$(ls -1 logs/run_*.log 2>/dev/null | wc -l | tr -d ' ')
+          echo "Logs found: $count"
+          if [ "$count" -lt 1 ]; then
+            echo "ERROR: No logs produced by watcher."
+            exit 1
+          fi
+          echo "Tail of newest log:"
+          newest=$(ls -1t logs/run_*.log | head -n1)
+          echo "== $newest =="
+          tail -n 60 "$newest" || true
+
+      - name: Upload watcher artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: watcher-demo-artifacts
+          path: |
+            ${{ env.KIT }}/watcher.out
+            ${{ env.KIT }}/logs/**/*.log
+            ${{ env.KIT }}/logs/*.log
+            ${{ env.KIT }}/notes/*EvidenceLog.md
+          if-no-files-found: warn
