@@ -8,6 +8,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
       - run: npm ci || npm install
-      - run: node setup_research_kits_node_only_plus.mjs
+      - run: node bootstrap_all_kits.mjs
       - run: node augment_nodeonly_kits.mjs
       - run: node tests/run_tests.mjs
