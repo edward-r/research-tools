@@ -16,7 +16,7 @@ help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_:-]+.*?## ' $(MAKEFILE_LIST) | sed 's/:.*##/: /' | sort
 
 kits:build ## Build/refresh both Node-only kits + augment (Project + Demo)
-	@node setup_research_kits_node_only_plus.mjs
+	@node bootstrap_all_kits.mjs
 	@node augment_nodeonly_kits.mjs
 	@echo -e "$(GREEN)Kits built. Next:$(RESET) cd $(KIT_NAME)_NODEONLY && make run:js"
 
