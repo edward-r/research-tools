@@ -1,25 +1,8 @@
-// setup_research_kits_node_only_plus.mjs
-// Builds two pure-Node demo kits with Smart Searches + a Node watcher:
-//   PROJECT_NAME_NODEONLY/ and DEMO_JS_AsyncPatterns_NODEONLY/
-//
-// Contents per kit:
-//   assets/datasets/sample.csv
-//   assets/code/sample_csv_stats.mjs         <-- pure-Node CSV stats (functional)
-//   tools/append_evidence_row.mjs            <-- pure-Node Evidence Log appender
-//   tools/watch_and_log_node.mjs             <-- pure-Node watcher (re-run on save)
-//   notes/<NAME>_EvidenceLog.md
-//   notes/SmartSearch_*.md (Bear search stubs)
-//   Makefile (run:js, watch:js, log:tail)
-//
-// Usage:
-//   node setup_research_kits_node_only_plus.mjs
-//   cd PROJECT_NAME_NODEONLY && make run:js
-//   cd PROJECT_NAME_NODEONLY && make watch:js
-//
-// No external deps, no classes.
+// bootstrap_all_kits.mjs
+// Rebuilds two pure-Node kits with dashboards, scratchpad, tests, watcher,
+// tail helper script, and Makefiles using hyphen targets + NeoVim panes.
 
 import { promises as fs } from "node:fs";
-import { spawn, execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, basename } from "node:path";
 
@@ -29,6 +12,7 @@ const write = async (p, text) => {
   await fs.writeFile(p, text, "utf8");
 };
 
+// ---------- Content blobs ----------
 const sampleCsv = `id,category,value,ok
 1,alpha,10,1
 2,beta,5,1
@@ -38,7 +22,6 @@ const sampleCsv = `id,category,value,ok
 6,alpha,20,1
 `;
 
-// Pure Node CSV stats (functional)
 const sampleCsvStatsMjs = `// assets/code/sample_csv_stats.mjs
 import { readFile } from 'node:fs/promises';
 
@@ -48,7 +31,7 @@ const parseCsv = (text) => {
   return data.map(r => Object.fromEntries(r.map((v,i)=>[header[i], v])));
 };
 
-const fmean = xs => xs.length ? xs.reduce((a,b)=>a+ b,0) / xs.length : 0;
+const fmean = xs => xs.length ? xs.reduce((a,b)=>a+b, 0) / xs.length : 0;
 
 const run = async () => {
   const text = await readFile(new URL('../datasets/sample.csv', import.meta.url));
@@ -90,7 +73,6 @@ run().catch(e => {
 });
 `;
 
-// Append to Evidence Log (Node-only)
 const appendEvidenceRowMjs = `// tools/append_evidence_row.mjs
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -135,18 +117,7 @@ const main = async () => {
 main().catch(e => { console.error(e); process.exit(1); });
 `;
 
-// Pure Node watcher (no deps, functional)
 const watchAndLogNodeMjs = `// tools/watch_and_log_node.mjs — watch a file, re-run on save, append Evidence Log
-// Usage:
-//   node tools/watch_and_log_node.mjs \\
-/* */    --file assets/code/sample_csv_stats.mjs \\
-/* */    --run "node assets/code/sample_csv_stats.mjs" \\
-/* */    --log notes/PROJECT_NAME_EvidenceLog.md \\
-/* */    --label sample_csv_stats.mjs
-//
-// Notes:
-// - Uses fs.watch with debounce. No external deps.
-
 import { watch } from 'node:fs';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
@@ -196,7 +167,6 @@ const main = async () => {
     app.on('close', () => {});
   };
 
-  // run once on start
   await execute();
 
   const trigger = debounce(execute, 150);
@@ -207,7 +177,23 @@ const main = async () => {
 main().catch(e => { console.error(e); process.exit(1); });
 `;
 
-// Evidence Log header
+// NEW: tail helper script to avoid nested quoting issues in NeoVim commands
+const tailLatestSh = `#!/usr/bin/env bash
+set -euo pipefail
+while true; do
+  f=$(ls -1t logs/run_*.log 2>/dev/null | head -n1 || true)
+  if [[ -n "\${f:-}" ]]; then
+    clear
+    echo "== $f =="
+    tail -n 60 "$f"
+  else
+    printf '(waiting for first log...)\\n'
+  fi
+  sleep 2
+done
+`;
+
+// Evidence log + notes
 const evidenceLogHeader = (NAME) => `# 📜 ${NAME} — Evidence & Source Log
 #${NAME} #EvidenceLog
 
@@ -215,7 +201,6 @@ const evidenceLogHeader = (NAME) => `# 📜 ${NAME} — Evidence & Source Log
 |------------|-------------|---------------------|------|-------|
 `;
 
-// Smart Search stubs (Bear)
 const smartSearchNotes = (NAME) => {
   const enc = (s) => encodeURIComponent(s);
   const mk = (label, query) =>
@@ -231,29 +216,167 @@ ${mk("Bugs", `#${NAME} AND #Bug`)}
 `;
 };
 
-// Makefile with run:js, watch:js, log:tail
+const projectDashboard = (NAME) => `# 📊 Project Dashboard — ${NAME}
+#${NAME} #Dashboard
+
+## Core Notes
+- [Evidence Log](bear://x-callback-url/search?term=%23${NAME}%20AND%20%23EvidenceLog)
+- [Smart Search Index](bear://x-callback-url/open-note?title=SmartSearch_Index)
+
+## Quick Commands
+\`\`\`bash
+make run-js
+make run-tests
+make watch-js
+make dev-3
+make log-tail
+\`\`\`
+
+## Common Filters (Bear)
+- [Active Tasks](bear://x-callback-url/search?term=%23${NAME}%20AND%20%23ToDo)
+- [Confirmed Evidence](bear://x-callback-url/search?term=%23${NAME}%20AND%20%23Confirmed)
+- [Code](bear://x-callback-url/search?term=%23${NAME}%20AND%20%23Code)
+- [Datasets](bear://x-callback-url/search?term=%23${NAME}%20AND%20%23Dataset)
+- [Bugs](bear://x-callback-url/search?term=%23${NAME}%20AND%20%23Bug)
+`;
+
+// Dataset wrangling scratchpad — functional JS utilities (FIX: previously missing)
+const datasetScratchpad = `# 🛠 Dataset Wrangling Scratchpad
+#Dataset #CodeRecipes
+
+## CSV → Array of Objects
+\`\`\`javascript
+const parseCsv = (text) => {
+  const [header, ...rows] = text.trim().split(/\\r?\\n/).map(r => r.split(','));
+  return rows.map(r => Object.fromEntries(r.map((v, i) => [header[i], v])));
+};
+\`\`\`
+
+## JSON file → Object
+\`\`\`javascript
+import { readFile } from 'node:fs/promises';
+const obj = JSON.parse(await readFile('data.json', 'utf8'));
+\`\`\`
+
+## NDJSON (newline-delimited JSON) → Array
+\`\`\`javascript
+import { readFile } from 'node:fs/promises';
+const rows = (await readFile('data.ndjson', 'utf8'))
+  .trim().split(/\\n+/)
+  .map(line => JSON.parse(line));
+\`\`\`
+
+## Array of Objects → CSV
+\`\`\`javascript
+const toCsv = (arr) => {
+  if (!arr.length) return '';
+  const header = Object.keys(arr[0]);
+  const rows = arr.map(obj => header.map(k => obj[k]).join(','));
+  return [header.join(','), ...rows].join('\\n');
+};
+\`\`\`
+
+## Filter rows by value
+\`\`\`javascript
+const filterBy = (arr, key, value) => arr.filter(r => r[key] === value);
+\`\`\`
+`;
+
+// tests
+const testRunner = `// tests/run_tests.mjs
+import { spawn } from 'node:child_process';
+
+const run = (cmd, args=[]) => new Promise(resolve => {
+  const ps = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  let out = '';
+  ps.stdout.on('data', d => out += d.toString());
+  ps.stderr.on('data', d => out += d.toString());
+  ps.on('close', code => resolve({ code, out }));
+});
+
+const approx = (a, b, eps=1e-9) => Math.abs(a - b) <= eps;
+
+const main = async () => {
+  const { code, out } = await run(process.execPath, ['assets/code/sample_csv_stats.mjs']);
+  if (code !== 0) {
+    console.log('❌ Script exited non-zero. Output:');
+    console.log(out);
+    process.exit(1);
+  }
+  let json;
+  try { json = JSON.parse(out); }
+  catch (e) {
+    console.log('❌ Output was not valid JSON:', e.message);
+    console.log(out);
+    process.exit(1);
+  }
+  const has = ['count','sum','mean','by_category'].every(k => Object.hasOwn(json, k));
+  if (!has) { console.log('❌ Missing required keys'); process.exit(1); }
+  const { count, sum, mean } = json;
+  const expected = count > 0 ? sum / count : 0;
+  if (!approx(mean, expected)) {
+    console.log('❌ mean != sum/count', { mean, sum, count, expected });
+    process.exit(1);
+  }
+  console.log('✅ Tests passed.');
+  console.log(JSON.stringify({ ok: true, count, sum, mean }, null, 2));
+  process.exit(0);
+};
+
+main().catch(e => { console.error(e); process.exit(1); });
+`;
+
+// Makefile (hyphen targets + NeoVim panes) — uses single quotes in -c to avoid nested-quote issues
 const makefileFor = (NAME) => `# Makefile — ${NAME} Node-only demo
 SHELL := /bin/bash
 
-JS_FILE ?= assets/code/sample_csv_stats.mjs
-EVIDENCE ?= notes/${NAME}_EvidenceLog.md
+JS_FILE    ?= assets/code/sample_csv_stats.mjs
+EVIDENCE   ?= notes/${NAME}_EvidenceLog.md
 
-run:js ## Run Node demo, log output, append Evidence Log
-	@mkdir -p logs
-	@ts=$$(date +%Y%m%d_%H%M%S); \\
-	  out="logs/run_$$ts.log"; \\
-	  node $(JS_FILE) > "$$out" 2>&1; status=$$?; \\
-	  cat "$$out"; \\
-	  node tools/append_evidence_row.mjs --log $(EVIDENCE) --label $$(basename $(JS_FILE)) --status $$status --input "$$out"
+.PHONY: help run-js watch-js log-tail run-tests dev dev-3 dev-tests
 
-watch:js ## Watch JS file and auto-append Evidence Log
-	@node tools/watch_and_log_node.mjs --file $(JS_FILE) --run "node $(JS_FILE)" --log $(EVIDENCE) --label $$(basename $(JS_FILE))
+help: ## Show available targets
+\t@grep -E '^[a-zA-Z0-9_.-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*##/: /' | sort
 
-log:tail ## Tail newest log
-	@bash -lc 'tail -n 20 "$$(ls -1t logs/run_*.log | head -n 1)"'
+run-js: ## Run Node demo, log output, append Evidence Log
+\t@mkdir -p logs
+\t@ts=$$(date +%Y%m%d_%H%M%S); \\
+\t  out="logs/run_$$ts.log"; \\
+\t  node $(JS_FILE) > "$$out" 2>&1; status=$$?; \\
+\t  cat "$$out"; \\
+\t  node tools/append_evidence_row.mjs --log $(EVIDENCE) --label $$(basename $(JS_FILE)) --status $$status --input "$$out"; \\
+\t  exit $$status
+
+watch-js: ## Watch JS file; on save: run → log → append
+\t@node tools/watch_and_log_node.mjs --file $(JS_FILE) --run "node $(JS_FILE)" --log $(EVIDENCE) --label $$(basename $(JS_FILE))
+
+run-tests: ## Run tests; log pass/fail; append Evidence Log
+\t@mkdir -p logs
+\t@ts=$$(date +%Y%m%d_%H%M%S); \\
+\t  out="logs/run_$$ts.log"; \\
+\t  node tests/run_tests.mjs > "$$out" 2>&1; status=$$?; \\
+\t  cat "$$out"; \\
+\t  node tools/append_evidence_row.mjs --log $(EVIDENCE) --label tests --status $$status --input "$$out"; \\
+\t  exit $$status
+
+log-tail: ## Show the newest run log
+\t@bash -lc 'tail -n 40 "$$(ls -1t logs/run_*.log 2>/dev/null | head -n 1)"'
+
+dev: ## NeoVim: Evidence Log (L) + watcher (R)
+\t@nvim "$(EVIDENCE)" -c 'vsplit | terminal make watch-js'
+
+dev-3: ## NeoVim: Evidence Log (L), watcher (TR), newest log tail (BR)
+\t@nvim "$(EVIDENCE)" \\
+\t  -c 'vsplit | terminal make watch-js' \\
+\t  -c 'wincmd h | botright split | terminal bash tools/tail_latest.sh'
+
+dev-tests: ## NeoVim: Evidence Log (L), run-tests (TR), newest log tail (BR)
+\t@nvim "$(EVIDENCE)" \\
+\t  -c 'vsplit | terminal make run-tests' \\
+\t  -c 'wincmd h | botright split | terminal bash tools/tail_latest.sh'
 `;
 
-// Create one kit
+// ---------- Builder ----------
 const makeKit = async (NAME) => {
   const root = join(here, `${NAME}_NODEONLY`);
   await write(join(root, "assets/datasets/sample.csv"), sampleCsv);
@@ -266,11 +389,21 @@ const makeKit = async (NAME) => {
     appendEvidenceRowMjs,
   );
   await write(join(root, "tools/watch_and_log_node.mjs"), watchAndLogNodeMjs);
+  await write(join(root, "tools/tail_latest.sh"), tailLatestSh);
+  try {
+    await fs.chmod(join(root, "tools/tail_latest.sh"), 0o755);
+  } catch {}
   await write(
     join(root, `notes/${NAME}_EvidenceLog.md`),
     evidenceLogHeader(NAME),
   );
-  await write(join(root, `notes/SmartSearch_Index.md`), smartSearchNotes(NAME));
+  await write(join(root, "notes/SmartSearch_Index.md"), smartSearchNotes(NAME));
+  await write(join(root, "notes/Project_Dashboard.md"), projectDashboard(NAME));
+  await write(
+    join(root, "notes/Dataset_Wrangling_Scratchpad.md"),
+    datasetScratchpad,
+  );
+  await write(join(root, "tests/run_tests.mjs"), testRunner);
   await write(join(root, "Makefile"), makefileFor(NAME));
   return root;
 };
@@ -280,7 +413,13 @@ const main = async () => {
     const root = await makeKit(k);
     console.log(`✅ Created ${root}`);
     console.log(
-      `Next steps:\n  cd ${basename(root)}\n  make run:js\n  make watch:js   # re-run on save → log → append\n  make log:tail   # quick tail of latest run`,
+      `Next steps:\n` +
+        `  cd ${basename(root)}\n` +
+        `  make run-js\n` +
+        `  make run-tests   # tests → log pass/fail → append\n` +
+        `  make watch-js    # re-run on save → log → append\n` +
+        `  make dev-3       # 3-pane NeoVim mission control\n` +
+        `  make log-tail    # tail latest run`,
     );
     console.log("---");
   }
