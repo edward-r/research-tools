@@ -501,3 +501,149 @@ or content category using Bear's tag-based search system.
 
 The `SmartSearch_Index.md` file appears to be a dashboard of
 one-click Bear search links that help you navigate your research findings efficiently.
+
+---
+
+## How `dev` works
+
+When you run:
+
+```bash
+make dev
+# or
+npm run dev
+```
+
+You get:
+
+- **Left split**: `PROJECT_NAME_EvidenceLog.md` open in
+  normal NeoVim buffer (you can scroll, search, edit tags)
+- **Right split**: Terminal buffer running the watcher (`make watch:js`),
+  auto-updating as you save your JS file
+- Every run appends to the Evidence Log in real time,
+  so you can confirm results without leaving NeoVim.
+
+## Bonus NeoVim Tip
+
+If you want **`<leader>d`** to trigger dev mode right from your normal buffers:
+
+Add to your `init.lua` (or equivalent LazyVim keymap config):
+
+```lua
+vim.keymap.set("n", "<leader>d", ":!make dev<CR>", { desc = "Start project dev mode" })
+```
+
+Now you can just hit `Space d` (if your leader is space) and dev mode launches.
+
+## Three-pane NeoVim “Mission Control” (watcher + Evidence Log + live log tail)
+
+Below is a **drop-in update** to your Makefile that adds a `dev3` target. It launches NeoVim with:
+
+1. **Left pane:** your Evidence Log (editable)
+2. **Top-right pane (terminal):** `make watch:js` (re-runs on save → log → append)
+3. **Bottom-right pane (terminal):** a refresh loop that shows the **last 60 lines**
+   of the newest `logs/run_*.log` (auto-updates every 2s)
+
+> This keeps everything Node-only and functional; no classes anywhere.
+
+## Makefile additions
+
+Append this target to the Makefile I gave you earlier
+(you can keep all existing targets):
+
+```makefile
+# --- 3-pane NeoVim dev mode ---
+.PHONY: dev3
+dev3 ## NeoVim: Evidence Log (L), watcher (TR), newest log tail (BR)
+  @echo -e "$(YELLOW)▶ Starting 3-pane dev mode$(RESET)"
+  @nvim "$(EVIDENCE)" \
+    -c "vsplit | terminal make watch:js" \
+    -c "wincmd h | botright split | terminal bash -lc 'while true; do f=$$(ls -1t logs/run_*.log 2>/dev/null | head -n1); if [ -n \"$$f\" ]; then clear; echo \"== $$f ==\"; tail -n 60 \"$$f\"; else printf \"(waiting for first log…)\n\"; fi; sleep 2; done'"
+```
+
+## Notes on the command
+
+- We start NeoVim with the **Evidence Log** as the initial buffer, then:
+  - `vsplit | terminal make watch:js` opens the watcher in a **vertical split** (top-right).
+  - `wincmd h | botright split | terminal …` returns to the **left pane**, opens a **bottom split** on the right, and runs a small Bash loop that always shows the newest log’s tail.
+- The Bash loop avoids `tail -F` pitfalls when the newest log file changes; it refreshes cleanly every 2 s.
+
+## Usage
+
+```bash
+# 3-pane Mission Control
+make dev3
+# or
+npm run dev:3
+```
+
+Inside NeoVim:
+
+- Left: edit `$(EVIDENCE)` freely (add tags like `#Confirmed`,
+  `#Bug`, `#Dataset`, etc.).
+- Top-right: save your JS file to trigger re-runs; results are logged automatically.
+- Bottom-right: the newest log tail updates every 2 s.
+
+To stop: close the right-hand terminals (`q` in each terminal buffer) or quit NeoVim.
+
+## Tips
+
+- Change how many lines you tail by editing `tail -n 60` in the loop.
+- If you switch your main script, just update `JS_FILE` in the
+  Makefile (or override per run):
+
+  ```bash
+  make dev3 JS_FILE=assets/code/my_script.mjs
+  ```
+
+- Works great with `:set autowrite` in NeoVim so buffers save before runs:
+  ```
+  :set autowrite
+  ```
+
+## Three-pane NeoVim view for tests (`dev:tests`)
+
+Below are **drop-in additions** so you can launch a
+3-pane NeoVim layout focused on tests:
+
+- **Left:** Evidence Log (editable)
+- **Top-right (terminal):** runs `make run:tests`
+- **Bottom-right (terminal):** auto-refreshing tail of the
+  newest `logs/run_*.log` (updates every 2 s)
+
+## Notes
+
+- The **top-right** pane runs `make run:tests` once. To re-run tests,
+  focus that terminal and press ↑ (history) + Enter, or type `make run:tests` again.
+- The **bottom-right** pane always
+  shows the last 60 lines of the **newest** log,
+  even when a new test run creates a fresh file.
+
+## Usage
+
+```bash
+# Launch the 3-pane tests view
+make dev:tests
+# or
+npm run dev:tests
+```
+
+Inside NeoVim:
+
+- Edit your code or tests on the left Evidence Log if needed (add tags like `#Confirmed`, `#Bug` after runs).
+- In the **top-right** terminal, re-run `make run:tests` whenever you want.
+- Watch the last test log update live in the **bottom-right**.
+
+### Tip
+
+Add this to NeoVim to start test mode with a keypress (e.g., `<leader>t`):
+
+```lua
+vim.keymap.set("n", "<leader>t", ":!make dev:tests<CR>", { desc = "Start 3-pane test mode" })
+```
+
+If you later want **auto-re-run on file save** for tests,
+say the word — I can add a
+Node-only watcher target (`watch:tests`)
+that triggers `run:tests` whenever files under `assets/code/` or `tests/` change,
+and still logs/append results to the Evidence Log.

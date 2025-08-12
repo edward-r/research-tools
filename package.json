@@ -7,10 +7,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "dev": "make dev",
+    "dev:3": "make dev3",
     "kits:build": "make kits:build",
     "run:js": "make run:js",
     "watch:js": "make watch:js",
     "run:tests": "make run:tests",
-    "log:tail": "make log:tail"
+    "log:tail": "make log:tail",
+    "dev:tests": "make dev:tests"
   }
 }

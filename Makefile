@@ -9,7 +9,7 @@ GREEN  := \033[32m
 YELLOW := \033[33m
 RESET  := \033[0m
 
-.PHONY: help kits:build run:js watch:js run:tests log:tail
+.PHONY: help kits:build run:js watch:js run:tests log:tail dev
 
 help: ## Show available targets
 	@echo -e "$(GREEN)Available targets$(RESET)"
@@ -48,5 +48,24 @@ run:tests ## Run tests; log pass/fail; append Evidence Log
 
 log:tail ## Show the newest run log
 	@tail -n 40 $$(ls -1t logs/run_*.log | head -n 1)
+
+dev ## Open Evidence Log in NeoVim split + run watcher
+	@echo -e "$(YELLOW)▶ Starting dev mode: Evidence Log + watcher$(RESET)"
+	@nvim -O $(EVIDENCE) -c "terminal make watch:js"
 # ========= end Makefile =========
 
+# --- 3-pane NeoVim dev mode ---
+.PHONY: dev3
+dev3 ## NeoVim: Evidence Log (L), watcher (TR), newest log tail (BR)
+	@echo -e "$(YELLOW)▶ Starting 3-pane dev mode$(RESET)"
+	@nvim "$(EVIDENCE)" \
+	  -c "vsplit | terminal make watch:js" \
+	  -c "wincmd h | botright split | terminal bash -lc 'while true; do f=$$(ls -1t logs/run_*.log 2>/dev/null | head -n1); if [ -n \"$$f\" ]; then clear; echo \"== $$f ==\"; tail -n 60 \"$$f\"; else printf \"(waiting for first log…)\n\"; fi; sleep 2; done'"
+
+# --- 3-pane NeoVim test mode ---
+.PHONY: dev:tests
+dev:tests ## NeoVim: Evidence Log (L), run tests (TR), newest log tail (BR)
+	@echo -e "$(YELLOW)▶ Starting 3-pane test mode$(RESET)"
+	@nvim "$(EVIDENCE)" \
+	  -c "vsplit | terminal make run:tests" \
+	  -c "wincmd h | botright split | terminal bash -lc 'while true; do f=$$(ls -1t logs/run_*.log 2>/dev/null | head -n1); if [ -n \"$$f\" ]; then clear; echo \"== $$f ==\"; tail -n 60 \"$$f\"; else printf \"(waiting for first test run…)\\n\"; fi; sleep 2; done'"
