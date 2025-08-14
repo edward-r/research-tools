@@ -7,7 +7,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "kits:build": "node bootstrap_all_kits.mjs",
+    "kits:build": "node scripts/bootstrap/index.mjs",
     "run:js": "make run-js",
     "watch:js": "make watch-js",
     "run:tests": "make run-tests",

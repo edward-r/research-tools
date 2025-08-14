@@ -4,7 +4,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 const kv = ()=>Object.fromEntries(process.argv.slice(2).map((a,i,arr)=>a.startsWith('--')?[a.slice(2),arr[i+1]]:null).filter(Boolean));
 const ts = ()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;};
-const runCmd = (s)=>new Promise(res=>{const [c,...a]=s.split(' ');const ps=spawn(c,a,{stdio:['ignore','pipe','pipe']});let out='';ps.stdout.on('data',d=>out+=d);ps.stderr.on('data',d=>out+=d);ps.on('close',code=>res({code,out}));});
+const runCmd = (s)=>new Promise(res=>{const [c,...a]=s.split(' ');const ps=spawn(c,a,{stdio:['ignore','pipe','pipe']});let out='';ps.stdout.on('data',d=>out+=d);ps.stderr.on('data',d=>out+=d);ps.on('close',code=>res({code,out}))});
 const debounce=(f,ms)=>{let t;return(...xs)=>{clearTimeout(t);t=setTimeout(()=>f(...xs),ms);};};
 const main=async()=>{
   const { file, run, log, label } = kv();

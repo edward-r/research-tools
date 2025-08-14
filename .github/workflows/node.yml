@@ -1,4 +1,4 @@
-name: "Node.js CI (Research Kits: PROJECT + DEMO + Watcher)"
+name: Research Kits CI (JS + Python, modular bootstrap)
 
 on:
   push:
@@ -7,8 +7,13 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+concurrency:
+  group: research-kits-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate-kits:
+    name: Validate kits (JS + PY)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -20,44 +25,66 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ---- Toolchains ----
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
 
-      - name: Install dependencies (if package.json exists)
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "requirements.txt"
+
+      # ---- (Optional) Install deps at repo root if present ----
+      - name: Install Node deps (if package.json exists)
         run: |
           if [ -f package.json ]; then
-            npm install
+            npm ci || npm install
           else
-            echo "No package.json at repo root — skipping install."
+            echo "No package.json at repo root — skipping npm install."
           fi
 
-      - name: Ensure kits present (bootstrap if needed)
+      - name: Install Python deps (if requirements.txt exists)
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt — skipping pip install."
+          fi
+
+      # ---- Bootstrap kits via modular entrypoint ----
+      - name: Bootstrap kits (if missing)
         run: |
           if [ ! -d "${{ matrix.kit }}" ]; then
-            if [ -f bootstrap_all_kits.mjs ]; then
-              echo "Kit ${{ matrix.kit }} not found. Bootstrapping all kits..."
-              node bootstrap_all_kits.mjs
+            if [ -f scripts/bootstrap/index.mjs ]; then
+              echo "Bootstrapping kits…"
+              node scripts/bootstrap/index.mjs
             else
-              echo "ERROR: ${{ matrix.kit }} not found and no bootstrap_all_kits.mjs present."
+              echo "ERROR: ${{ matrix.kit }} not found and no scripts/bootstrap/index.mjs present."
               exit 1
             fi
           fi
           ls -la "${{ matrix.kit }}"
 
-      - name: Run kit demo (make run-js)
+      # ---- JavaScript lane ----
+      - name: Run JS demo
         run: make -C "${{ matrix.kit }}" run-js
 
-      - name: Run kit tests (make run-tests)
-        run: |
-          if grep -q '^run-tests:' "${{ matrix.kit }}/Makefile"; then
-            make -C "${{ matrix.kit }}" run-tests
-          else
-            echo "No run-tests target found in ${{ matrix.kit }}/Makefile — skipping."
-          fi
+      - name: Run JS tests
+        run: make -C "${{ matrix.kit }}" run-tests
 
+      # ---- Python lane ----
+      - name: Run Python demo
+        run: make -C "${{ matrix.kit }}" run-py
+
+      - name: Run Python tests
+        run: make -C "${{ matrix.kit }}" run-tests-py
+
+      # ---- Artifacts ----
       - name: Upload logs & Evidence Log
         uses: actions/upload-artifact@v4
         with:
@@ -69,13 +96,15 @@ jobs:
           if-no-files-found: warn
 
   watcher-demo:
+    name: Watcher demo (JS + PY) on DEMO kit
     runs-on: ubuntu-latest
     needs: validate-kits
     env:
       KIT: DEMO_JS_AsyncPatterns_NODEONLY
-      FILE: assets/code/sample_csv_stats.mjs
+      JS_FILE: assets/code/sample_csv_stats.mjs
+      PY_FILE: assets/code_py/sample_llm_primitives.py
       LOG: notes/DEMO_JS_AsyncPatterns_EvidenceLog.md
-      LABEL: sample_csv_stats.mjs
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,75 +115,107 @@ jobs:
           node-version: 20.x
           cache: npm
 
-      - name: Install dependencies (if package.json exists)
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "requirements.txt"
+
+      - name: Install Node deps (if package.json exists)
         run: |
           if [ -f package.json ]; then
-            npm install
+            npm ci || npm install
           else
-            echo "No package.json at repo root — skipping install."
+            echo "No package.json at repo root — skipping npm install."
           fi
 
       - name: Ensure demo kit present (bootstrap if needed)
         run: |
           if [ ! -d "${KIT}" ]; then
-            if [ -f bootstrap_all_kits.mjs ]; then
-              echo "Demo kit missing — bootstrapping…"
-              node bootstrap_all_kits.mjs
+            if [ -f scripts/bootstrap/index.mjs ]; then
+              echo "Bootstrapping kits…"
+              node scripts/bootstrap/index.mjs
             else
-              echo "ERROR: ${KIT} not found and no bootstrap_all_kits.mjs present."
+              echo "ERROR: ${KIT} not found and no scripts/bootstrap/index.mjs present."
               exit 1
             fi
           fi
           ls -la "${KIT}"
 
-      - name: Start watcher (background) and trigger a change
+      # ---- JS watcher: run once, trigger, stop ----
+      - name: Start JS watcher, trigger change, stop
         working-directory: ${{ env.KIT }}
         shell: bash
         run: |
-          # Start watcher in background; it runs once immediately, then on changes.
           node tools/watch_and_log_node.mjs \
-            --file "${FILE}" \
-            --run "node ${FILE}" \
+            --file "${JS_FILE}" \
+            --run "node ${JS_FILE}" \
             --log "${LOG}" \
-            --label "${LABEL}" \
-            > watcher.out 2>&1 & echo $! > watcher.pid
+            --label "$(basename "${JS_FILE}")" \
+            > watcher_js.out 2>&1 & echo $! > watcher_js.pid
 
-          # Give it time for the initial run and log write.
           sleep 2
-
-          # Trigger a change (append whitespace) to cause a second run.
-          printf '\n' >> "${FILE}"
-
-          # Give it time to detect the change and write another log.
+          printf '\n' >> "${JS_FILE}"
           sleep 4
-
-          # Stop the watcher.
-          kill $(cat watcher.pid) || true
+          kill $(cat watcher_js.pid) || true
           sleep 1
+          echo "---- watcher_js.out ----"
+          tail -n +1 watcher_js.out || true
 
-          echo "---- watcher.out ----"
-          tail -n +1 watcher.out || true
-
-      - name: Verify logs exist (at least one run)
+      - name: Verify JS logs exist
         working-directory: ${{ env.KIT }}
         run: |
           count=$(ls -1 logs/run_*.log 2>/dev/null | wc -l | tr -d ' ')
           echo "Logs found: $count"
           if [ "$count" -lt 1 ]; then
-            echo "ERROR: No logs produced by watcher."
+            echo "ERROR: No logs produced by JS watcher."
             exit 1
           fi
-          echo "Tail of newest log:"
           newest=$(ls -1t logs/run_*.log | head -n1)
-          echo "== $newest =="
-          tail -n 60 "$newest" || true
+          echo "== $newest ==" && tail -n 60 "$newest"
+
+      # ---- PY watcher: run once, trigger, stop ----
+      - name: Start PY watcher, trigger change, stop
+        working-directory: ${{ env.KIT }}
+        shell: bash
+        run: |
+          node tools/watch_and_log_node.mjs \
+            --file "${PY_FILE}" \
+            --run "python3 ${PY_FILE}" \
+            --log "${LOG}" \
+            --label "$(basename "${PY_FILE}")" \
+            > watcher_py.out 2>&1 & echo $! > watcher_py.pid
+
+          sleep 2
+          printf '\n' >> "${PY_FILE}"
+          sleep 4
+          kill $(cat watcher_py.pid) || true
+          sleep 1
+          echo "---- watcher_py.out ----"
+          tail -n +1 watcher_py.out || true
+
+      - name: Verify PY logs exist
+        working-directory: ${{ env.KIT }}
+        run: |
+          count=$(ls -1 logs/run_*.log 2>/dev/null | wc -l | tr -d ' ')
+          echo "Logs found: $count"
+          if [ "$count" -lt 1 ]; then
+            echo "ERROR: No logs produced by PY watcher."
+            exit 1
+          fi
+          newest=$(ls -1t logs/run_*.log | head -n1)
+          echo "== $newest ==" && tail -n 60 "$newest"
 
       - name: Upload watcher artifacts
         uses: actions/upload-artifact@v4
         with:
           name: watcher-demo-artifacts
           path: |
-            ${{ env.KIT }}/watcher.out
+            ${{ env.KIT }}/watcher_js.out
+            ${{ env.KIT }}/watcher_js.pid
+            ${{ env.KIT }}/watcher_py.out
+            ${{ env.KIT }}/watcher_py.pid
             ${{ env.KIT }}/logs/**/*.log
             ${{ env.KIT }}/logs/*.log
             ${{ env.KIT }}/notes/*EvidenceLog.md
