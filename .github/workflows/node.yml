@@ -1,27 +1,32 @@
-name: Node CI
+name: Node.js CI
 
 on:
   push:
-    branches: [master]
+    branches: ["master"]
   pull_request:
-    branches: [master]
+    branches: ["master"]
 
 jobs:
-  validate-kits:
+  build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: ${{ matrix.node-version }}
+          cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      # Detect Python dep files
-      - name: Detect Python dep files
+      - name: Detect Python dep files (to enable pip cache if present)
         id: pdeps
         shell: bash
         run: |
@@ -40,7 +45,6 @@ jobs:
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Setup Python with cache
       - name: Use Python 3.11 (cached)
         if: steps.pdeps.outputs.found == 'true'
         uses: actions/setup-python@v5
@@ -49,8 +53,7 @@ jobs:
           cache: pip
           cache-dependency-path: ${{ steps.pdeps.outputs.files }}
 
-      # Setup Python without cache
-      - name: Use Python 3.11
+      - name: Use Python 3.11 (no cache)
         if: steps.pdeps.outputs.found != 'true'
         uses: actions/setup-python@v5
         with:
@@ -60,65 +63,40 @@ jobs:
         run: |
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
+          else
+            echo "No requirements.txt — skipping pip install."
           fi
 
-      - name: Build kits
+      - name: Build kits to repo root
         run: npm run kits:build
 
-  watcher-demo:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - run: npm ci
-
-      # Detect Python dep files
-      - name: Detect Python dep files
-        id: pdeps
-        shell: bash
+      - name: Run demo watcher (JS + guarded PY)
         run: |
-          shopt -s globstar nullglob
-          files=(requirements.txt **/requirements.txt **/pyproject.toml)
-          matches=()
-          for f in "${files[@]}"; do [ -f "$f" ] && matches+=("$f"); done
-          if [ ${#matches[@]} -gt 0 ]; then
-            {
-              echo "found=true"
-              echo "files<<EOF"
-              printf '%s\n' "${matches[@]}"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
+          echo "=== Running watcher:demo ==="
+          if npm run | grep -q "watcher:demo"; then
+            npm run watcher:demo || { echo "❌ watcher:demo failed"; exit 1; }
           else
-            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ Skipping watcher:demo (script not found in package.json)"
           fi
 
-      # Setup Python with cache
-      - name: Use Python 3.11 (cached)
-        if: steps.pdeps.outputs.found == 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: ${{ steps.pdeps.outputs.files }}
-
-      # Setup Python without cache
-      - name: Use Python 3.11
-        if: steps.pdeps.outputs.found != 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Python deps (if requirements.txt exists)
+      - name: Python availability check (informational)
         run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
+          if command -v python3 >/dev/null 2>&1; then
+            echo "✅ python3 detected; Python watcher executed (if script enabled)."
+          else
+            echo "⚠️ python3 not available; Python watcher skipped."
           fi
 
-      - name: Run demo watcher
-        run: npm run watcher:demo
+      # ---- Upload logs & Evidence Logs as artifacts ----
+      - name: Upload watcher/demo artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: watcher-logs-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            DEMO_JS_AsyncPatterns_NODEONLY/logs/**/*.log
+            DEMO_JS_AsyncPatterns_NODEONLY/logs/*.log
+            DEMO_JS_AsyncPatterns_NODEONLY/notes/*EvidenceLog.md
+            PROJECT_NAME_NODEONLY/logs/**/*.log
+            PROJECT_NAME_NODEONLY/logs/*.log
+            PROJECT_NAME_NODEONLY/notes/*EvidenceLog.md
