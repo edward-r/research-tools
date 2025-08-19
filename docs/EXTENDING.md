@@ -1,136 +1,73 @@
-# EXTENDING
+# Extending the System
 
-This document describes how to **safely extend** the Research & Learning Toolkit.  
-Each section covers a specific type of extension, with examples, CI integration notes, and debugging guidance.
+How to add kits, targets, and tools — with runnable examples.
 
----
+## Extension Flow
 
-## 1. Adding a New Tool (Example: JSON → CSV Normalizer)
-
-### Steps
-
-1. Create a new script under `scripts/utils/`, e.g.:
-
-```js
-// scripts/utils/json_to_csv.mjs
-import fs from "fs";
-
-export const jsonToCsv = (inputPath, outputPath) => {
-  const data = JSON.parse(fs.readFileSync(inputPath, "utf8"));
-  const headers = Object.keys(data[0]);
-  const rows = data.map((row) => headers.map((h) => row[h]));
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-  fs.writeFileSync(outputPath, csv);
-};
+```mermaid
+flowchart TD
+    A[Template Kit] --> B[Bootstrap]
+    B --> C[Generated Kit]
+    C --> D[Add/Modify Make targets]
+    D --> E[Run → Logs → Evidence]
 ```
 
-2. Add tests under `tests/utils/`.
+## Add a New Kit
 
-3. Wire into a Make target:
+```bash
+# At repo root
+node scripts/bootstrap/index.mjs --kits MyNewKit --out . --force
+```
+
+You get `MyNewKit_NODEONLY/` with guarded Makefile, notes, logs, tools, assets, tests.
+
+## Add a New Tool + Target
+
+1. Create `tools/json_filter_to_csv.mjs` (functional script).
+2. Add Make target:
 
 ```make
-make json-to-csv
+json-filter-to-csv: ## Filter JSONL (FILE=…, KEY=…, VALUE=…) → out.csv
+	@$(MAKE) .ensure-kit
+	@node tools/json_filter_to_csv.mjs --file "$(FILE)" --key "$(KEY)" --value "$(VALUE)" > out.csv
+	@echo "Wrote out.csv"
 ```
 
----
+Run:
 
-## 2. Changing Default Entry Points
-
-### Where
-
-- Defaults live in `package.json → bin` and `Makefile`.
-
-### How
-
-- Update `package.json` bin entries to point at your new script.
-- Add or replace a `Make` target to map CLI calls cleanly.
-
----
-
-## 3. Adding a New Dataset + Demo + Test (JS Lane)
-
-### Steps
-
-1. Place dataset in `datasets/my_dataset.csv`.
-2. Create demo ingest under `scripts/ingest/my_dataset.mjs`.
-3. Add a test under `tests/ingest/my_dataset.test.js`.
-
-### Example Test
-
-```js
-import { runIngest } from "../../scripts/ingest/my_dataset.mjs";
-
-test("dataset ingests successfully", () => {
-  const output = runIngest("datasets/my_dataset.csv");
-  expect(output.length).toBeGreaterThan(0);
-});
+```bash
+make json-filter-to-csv FILE=assets/metadata/references_index.jsonl KEY=type VALUE=book
 ```
 
----
+## Change Defaults (entry points)
 
-## 4. Creating a New Research Ingest (e.g., Blog Imports)
+Temporary:
 
-### Steps
-
-1. Copy a template from `scripts/ingest/`.
-2. Modify fetch/parse logic for the new source.
-
-Example snippet:
-
-```js
-// scripts/ingest/blog_import.mjs
-import fetch from "node-fetch";
-
-export const ingestBlog = async (url) => {
-  const res = await fetch(url);
-  const html = await res.text();
-  // parse + normalize
-};
+```bash
+make run-js JS_FILE=assets/code/my_demo.mjs
 ```
 
-3. Add a test under `tests/ingest/`.
+Permanent (kit Makefile):
 
----
-
-## 5. Keeping Makefile Tabs Intact
-
-- `make` requires **hard tabs** (not spaces).
-- Use an editorconfig rule:
-
-```
-[Makefile]
-indent_style = tab
+```make
+JS_FILE ?= assets/code/my_demo.mjs
 ```
 
-- Always commit Makefile changes with tabs preserved.
+## Tests
 
----
+- JS: `tests/run_tests.mjs` (Node only, no deps).
+- PY: `tests/run_tests_py.py` (only runs if python3 exists).
 
-## 6. CI Integration Patterns
+## Debugging
 
-- Add a job in `.github/workflows/node.yml` for the new tool or ingest:
+- `missing separator` → ensure recipe lines start with **TAB**.
+- No Evidence row → verify `logs/run_*.log` exists and path passed to `append_evidence_row.mjs`.
+- Quick CSV from JSONL → `node tools/json_to_csv.mjs --file assets/metadata/*.jsonl > out.csv`.
 
-```yaml
-- name: Run blog ingest
-  run: npm run ingest:blogs
+Cross-links:
+
+- [Reference](./REFERENCE.md) · [Philosophy](./PHILOSOPHY.md) · [Glossary](./GLOSSARY.md)
+
 ```
 
-- Add dataset validation tests to ensure reproducibility.
-
----
-
-## 7. Debug Checklist
-
-- **CI fails on dataset ingest?** → check if new dataset path exists.
-- **Make target doesn’t run?** → ensure tabs are used.
-- **Test not detected?** → confirm filename matches `*.test.js`.
-- **CI environment missing deps?** → add to `package.json` + reinstall.
-
----
-
-## ✅ Best Practices
-
-- Keep each script modular.
-- Always add a dataset + test with every new ingest.
-- Run `make lint` before pushing.
-- Keep CI green: add tests, never comment them out.
+```

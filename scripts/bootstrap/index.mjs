@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 /**
- * Orchestrator: builds mixed kits (Node + Python + research add‑ons).
- * Default kits: PROJECT_NAME_NODEONLY, DEMO_JS_AsyncPatterns_NODEONLY
- *
- * Usage:
- *   node scripts/bootstrap/index.mjs
- *   node scripts/bootstrap/index.mjs --kits PROJECT_NAME,DEMO_JS_AsyncPatterns
+ * Orchestrator: builds kits to the repo root (or --out PATH)
+ * Defaults: PROJECT_NAME and DEMO_JS_AsyncPatterns
  */
 
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { promises as fs } from "node:fs";
 import { bootstrapMixedKit } from "./mixed_kit.mjs";
+import { makefileFor } from "./makefile_templates.mjs";
+import { makefileTasksTemplate } from "./makefile_tasks_template.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -24,28 +23,40 @@ const parseArgs = () =>
       .filter(Boolean),
   );
 
+const writeText = async (p, s) => {
+  await fs
+    .mkdir(p.substring(0, p.lastIndexOf("/")), { recursive: true })
+    .catch(() => {});
+  await fs.writeFile(p, s, "utf8");
+};
+
+async function writeKitGlue(rootDir, kitName) {
+  // Generate guarded Makefile and per-kit makefile_tasks.mjs
+  await writeText(join(rootDir, "Makefile"), makefileFor(kitName));
+  await writeText(join(rootDir, "makefile_tasks.mjs"), makefileTasksTemplate());
+  await fs.chmod(join(rootDir, "makefile_tasks.mjs"), 0o755);
+  console.log(
+    `✅ Wrote kit files → ${kitName}/Makefile, ${kitName}/makefile_tasks.mjs`,
+  );
+}
+
 (async function main() {
   const args = parseArgs();
-  const kits = (
+  const list = (
     args.kits ? args.kits.split(",") : ["PROJECT_NAME", "DEMO_JS_AsyncPatterns"]
   )
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // Optional: allow --out /absolute/or/relative/path
-  const outBase = args.out ? args.out : undefined;
+  const outBase = args.out ? args.out : process.cwd();
+  console.log(`➡️  Bootstrap kits → ${outBase}`);
 
-  for (const NAME of kits) {
+  for (const NAME of list) {
+    // bootstrapMixedKit appends _NODEONLY
     const root = await bootstrapMixedKit(here, NAME, outBase);
-    console.log(`✅ Created ${root}`);
-    console.log(
-      `Next steps:\n` +
-        `  cd ${root}\n` +
-        `  make run-js && make run-tests\n` +
-        `  make run-py && make run-tests-py\n` +
-        `  make dev-3\n` +
-        `  make pack-context NAME=my_context\n---`,
-    );
+    const kitName = `${NAME}_NODEONLY`;
+    console.log(`\n✅ Created kit directory: ${root}`);
+    await writeKitGlue(root, kitName);
   }
 })().catch((e) => {
   console.error(e);

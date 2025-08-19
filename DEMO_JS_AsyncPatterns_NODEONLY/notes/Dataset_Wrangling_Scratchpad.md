@@ -1,10 +1,5 @@
-# 🛠 Dataset Wrangling Scratchpad
-#Dataset #CodeRecipes
+# Dataset Wrangling Scratchpad
+#Dataset #Code #Scratchpad
 
-## CSV → Array of Objects (JS)
-```javascript
-const parseCsv = (text) => {
-  const [header, ...rows] = text.trim().split(/\r?\n/).map(r => r.split(','));
-  return rows.map(r => Object.fromEntries(r.map((v, i) => [header[i], v])));
-};
-```
+- JSON→CSV quick test:
+  `node tools/json_to_csv.mjs --file assets/metadata/articles_index.jsonl > out.csv`

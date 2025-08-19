@@ -1,22 +1,17 @@
 import { promises as fs } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { resolve } from "node:path";
 
-export const mkdirp = (p) => fs.mkdir(p, { recursive: true });
-
-export const writeText = async (file, text) => {
-  await fs.mkdir(dirname(file), { recursive: true });
-  await fs.writeFile(file, text, "utf8");
+export const ensureDir = async (p) => fs.mkdir(p, { recursive: true });
+export const writeText = async (p, s) => {
+  await ensureDir(p.substring(0, p.lastIndexOf("/")));
+  await fs.writeFile(p, s, "utf8");
 };
-
-export const chmodx = async (file) => {
-  try {
-    await fs.chmod(file, 0o755);
-  } catch {}
-};
-
-// NEW: project root = two levels up from scripts/bootstrap/
-export const projectRoot = (here) => resolve(here, "..", "..");
-
-// UPDATED: kits at repo root by default
-export const kitRoot = (here, NAME, outBase) =>
-  join(outBase ?? projectRoot(here), `${NAME}_NODEONLY`);
+export const absPath = (p) => resolve(p);
+export const parseKv = (argv) =>
+  Object.fromEntries(
+    argv
+      .map((a, i, arr) =>
+        a.startsWith("--") ? [a.slice(2), arr[i + 1]] : null,
+      )
+      .filter(Boolean),
+  );

@@ -8,15 +8,20 @@
   "main": "index.js",
   "scripts": {
     "kits:build": "node scripts/bootstrap/index.mjs",
+    "kits:build:root": "node scripts/bootstrap/index.mjs --out .",
+    "kits:rebuild": "node scripts/bootstrap/index.mjs --out . --force",
     "kits:build:out": "node scripts/bootstrap/index.mjs --out ./playground",
     "template:zip": "node scripts/package_template.mjs",
     "watcher:demo": "node scripts/ci/watcher_demo.mjs",
     "run:js": "make run-js",
     "watch:js": "make watch-js",
     "run:tests": "make run-tests",
+    "run:py": "make run-py",
+    "watch:py": "make watch-py",
+    "run:tests:py": "make run-tests-py",
     "dev": "make dev",
     "dev:3": "make dev-3",
     "dev:tests": "make dev-tests",
-    "log:tail": "make log-tail"
+    "log:tail": "make log.tail"
   }
 }

@@ -1,21 +1,47 @@
-// tools/transcript_import.mjs
-const parseKV=()=>Object.fromEntries(process.argv.slice(2).map((a,i,arr)=>a.startsWith('--')?[a.slice(2),arr[i+1]]:null).filter(Boolean));
-const ensureDir=async(p)=>{const {mkdir}=await import('node:fs/promises'); const {dirname}=await import('node:path'); await mkdir(dirname(p),{recursive:true});};
-const appendJsonl=async(file,obj)=>{const {appendFile}=await import('node:fs/promises'); await ensureDir(file); await appendFile(file, JSON.stringify(obj)+'\n','utf8');};
-import { readFile, appendFile } from 'node:fs/promises'; import { parse as p } from 'node:path';
-const parseTime=s=>{const m=s.trim().replace(',','.').match(/^(\d+):(\d+):(\d+)(?:\.(\d+))?$/); if(!m) return 0; const[_,H,M,S,ms='0']=m; return (+H)*3600+(+M)*60+(+S)+(+('0.'+ms));};
-const parseSrt=t=>t.split(/\r?\n\r?\n/).map(ch=>{const ls=ch.trim().split(/\r?\n/).filter(Boolean); if(ls.length<2)return null; const [a,b]=ls[1].split(/-->|→/); return {start:parseTime(a), end:parseTime(b||a), text:ls.slice(2).join(' ')};}).filter(Boolean);
-const parseVtt=t=>parseSrt(t.replace(/^WEBVTT.*\n/,''));
-const main=async()=>{
-  const a=parseKV(); const file=a.file; const source=a.source||'unknown'; if(!file){ console.error('Usage: --file <.srt|.vtt|.json|.jsonl> [--source X]'); process.exit(2); }
-  const raw=await readFile(file,'utf8'); let segs=[];
-  if(file.endsWith('.srt')) segs=parseSrt(raw); else if(file.endsWith('.vtt')) segs=parseVtt(raw);
-  else if(file.endsWith('.jsonl')) segs=raw.trim().split(/\n+/).map(l=>JSON.parse(l));
-  else if(file.endsWith('.json')){ const j=JSON.parse(raw); segs=Array.isArray(j)?j:(j.segments||[]); }
-  else { console.error('Unsupported transcript format'); process.exit(2); }
-  const base=p(file).name; const out=`assets/metadata/transcripts/${base}.jsonl`; await ensureDir(out);
-  for(const s of segs) await appendFile(out, JSON.stringify(s)+'\n','utf8');
-  await appendJsonl('assets/metadata/transcript_index.jsonl',{file:out, imported_from:file, count:segs.length, source, at:new Date().toISOString()});
-  process.stdout.write(JSON.stringify({ok:true,wrote:out,count:segs.length},null,2)+'\n');
+#!/usr/bin/env node
+import { promises as fs } from 'node:fs';
+import { basename } from 'node:path';
+
+const kv=()=>Object.fromEntries(process.argv.slice(2).map((a,i,x)=>a.startsWith('--')?[a.slice(2),x[i+1]]:null).filter(Boolean));
+const toJsonl = (rows) => rows.map(o=>JSON.stringify(o)).join('\n')+'\n';
+
+const parseSrt = (text) => {
+  const blocks = text.split(/\r?\n\r?\n/).map(b=>b.trim()).filter(Boolean);
+  return blocks.map(b=>{
+    const lines=b.split(/\r?\n/).filter(Boolean);
+    const timing = lines[1] || '';
+    const m = timing.match(/(\d+:\d+:\d+,\d+) --> (\d+:\d+:\d+,\d+)/);
+    return { t0: m?m[1]:'', t1: m?m[2]:'', text: lines.slice(2).join(' ') };
+  });
+};
+
+const parseVtt = (text) => {
+  const lines = text.split(/\r?\n/);
+  const out=[]; let buf=null;
+  for (const ln of lines) {
+    if (/-->/i.test(ln)) { buf={ timing: ln, text: '' }; out.push(buf); continue; }
+    if (buf) buf.text += (buf.text?' ':'') + ln.trim();
+  }
+  return out.map(b=>{
+    const m=b.timing.match(/(\d+:\d+:\d+\.\d+) --> (\d+:\d+:\d+\.\d+)/);
+    return { t0: m?m[1]:'', t1: m?m[2]:'', text: (b.text||'').trim() };
+  });
+};
+
+const main = async () => {
+  const { file, source='manual' } = kv();
+  if (!file) { console.error('Usage: node tools/transcript_import.mjs --file <.srt|.vtt|.json|.jsonl> --source <tag>'); process.exit(2); }
+  const text = await fs.readFile(file,'utf8');
+  let rows=[];
+  if (file.endsWith('.jsonl')) rows = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(JSON.parse);
+  else if (file.endsWith('.json')) rows = JSON.parse(text);
+  else if (file.endsWith('.srt')) rows = parseSrt(text);
+  else if (file.endsWith('.vtt')) rows = parseVtt(text);
+  else { console.error('Unsupported file type'); process.exit(2); }
+
+  const outRow = { id: basename(file), source, items: rows.length };
+  await fs.mkdir('assets/metadata/transcripts', { recursive:true });
+  await fs.appendFile('assets/metadata/transcripts/transcripts_index.jsonl', JSON.stringify(outRow)+'\n', 'utf8');
+  console.log(`Indexed transcript (${rows.length} items)`);
 };
 main().catch(e=>{ console.error(e); process.exit(1); });

@@ -1,17 +1,9 @@
-# 📊 Project Dashboard — PROJECT_NAME
-#PROJECT_NAME #Dashboard
+# PROJECT_NAME_NODEONLY — Project Dashboard
+#PROJECT_NAME_NODEONLY #Dashboard
 
-## Quick Commands
-```bash
-make run-js
-make run-tests
-make watch-js
-make dev-3
-make run-py
-make run-tests-py
-make watch-py
-```
-
-## Core Notes
-- [Evidence Log](bear://x-callback-url/search?term=%23PROJECT_NAME%20AND%20%23EvidenceLog)
-- [Smart Search Index](bear://x-callback-url/open-note?title=SmartSearch_Index)
+- Status: #Active
+- Focus: Learning loops + ingest tooling
+- Shortcuts:
+  - `make run-js`, `make watch-js`, `make log.tail`
+  - `make ingest:smoke`, `make ingest:smoke:transcript`
+  - `make pack-context NAME=my_context`
