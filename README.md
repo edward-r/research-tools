@@ -99,13 +99,11 @@ It provides a structured way to ingest, transform, and explore research assets â
 ```mermaid
 flowchart TD
     A[Research Assets] -->|Books, Blogs, Audio, Video, Notes| B[Ingest Pipelines]
-    B --> C[Datasets (CSV, JSON, Normalized Data)]
+    B --> C["Datasets (CSV, JSON, Normalized Data)"]
     C --> D[Learning Dashboard]
     D --> E[Evidence Logs & Summaries]
     E --> F[Research Outputs: Papers, Books, Blogs]
 ```
-
-## ![](Mermaid%20Chart%20-%20Create%20complex,%20visual%20diagrams%20with%20text.%20A%20smarter%20way%20of%20creating%20diagrams.-2025-08-18-190643.png)
 
 ### Developer Workflow
 
@@ -118,8 +116,6 @@ flowchart LR
     E --> F[Bootstrap Kits]
     F --> G[Learning + Research Toolkit]
 ```
-
-## ![](Mermaid%20Chart%20-%20Create%20complex,%20visual%20diagrams%20with%20text.%20A%20smarter%20way%20of%20creating%20diagrams.-2025-08-18-190714.png)
 
 ## ðŸ§© Extending the System
 
