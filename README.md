@@ -84,7 +84,7 @@ node.yml # CI (Node + optional Python cache)
 
 ```mermaid
 flowchart LR
-  A[Make target] --> B[Kit Makefile (guarded)]
+  A[Make target] --> B["Kit Makefile (guarded)"]
   B -->|.ensure-kit| C[Create dirs + EvidenceLog header]
   B --> D[tools/* .mjs scripts]
   D --> E[logs/run_*.log]
