@@ -121,8 +121,6 @@ See **`EXTENDING.md`** to add new features safely.
 
 ---
 
-# PHILOSOPHY.md
-
 # Philosophy of Use
 
 This system is designed for **serious learning** and **evidence-driven research**. It favors:
@@ -169,8 +167,3 @@ This system is designed for **serious learning** and **evidence-driven research*
 - Fewer moving parts: no DB, no big app. Just Make + Node scripts + Markdown.
 - Fast to grok: all code is short, functional, and self-documenting.
 - Scales down well for focused study; scales up by adding small tools as needed.
-
-```
-
-```
-
