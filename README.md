@@ -171,3 +171,4 @@ This system is designed for **serious learning** and **evidence-driven research*
 - Fast to grok: all code is short, functional, and self-documenting.
 - Scales down well for focused study; scales up by adding small tools as needed.
 ```
+
