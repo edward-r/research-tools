@@ -59,27 +59,27 @@ make dev-3
 ```plaintext
   scripts/
     bootstrap/
-      index.mjs # Orchestrator (idempotent, --force to overwrite)
-      mixed_kit.mjs # Creates a kit and returns absolute path
-      makefile_templates.mjs # Generates guarded per-kit Makefile content
+      index.mjs                   # Orchestrator (idempotent, --force to overwrite)
+      mixed_kit.mjs               # Creates a kit and returns absolute path
+      makefile_templates.mjs      # Generates guarded per-kit Makefile content
       makefile_tasks_template.mjs # Generates per-kit makefile_tasks.mjs content
   kits/ (optional if you used --out)
   PROJECT_NAME_NODEONLY/
-    Makefile # Guarded kit Makefile
-    makefile_tasks.mjs # Task wrappers + tiny CLI (functional JS)
-    notes/ # Evidence Log, exports, Bear stubs
-    logs/ # Run logs (tail with make log.tail)
+    Makefile                      # Guarded kit Makefile
+    makefile_tasks.mjs            # Task wrappers + tiny CLI (functional JS)
+    notes/                        # Evidence Log, exports, Bear stubs
+    logs/                         # Run logs (tail with make log.tail)
     assets/
-    code/ # JS examples/demos (default entry)
-    metadata/ # \*.jsonl registries + transcripts/
-    images/ # Extracted frames, GIF stubs
-    articles/ # Saved markdowns, captured web
-    tools/ # Small functional utilities (no deps)
-    tests/ # Lane tests
+      code/                       # JS examples/demos (default entry)
+      metadata/                   # \*.jsonl registries + transcripts/
+      images/                     # Extracted frames, GIF stubs
+      articles/                   # Saved markdowns, captured web
+    tools/                        # Small functional utilities (no deps)
+    tests/                        # Lane tests
   .github/
     workflows/
-      node.yml # CI (Node + optional Python cache)
-  .editorconfig # Tabs in Makefiles, sensible defaults
+      node.yml                    # CI (Node + optional Python cache)
+  .editorconfig                   # Tabs in Makefiles, sensible defaults
 ```
 
 ## How the Pieces Fit
